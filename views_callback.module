@@ -1,0 +1,175 @@
+<?php
+
+/**
+ * @file
+ * Allows to use PHP callbacks in views.
+ */
+
+/**
+ * Implements hook_autoload_info().
+ */
+function views_callback_autoload_info() {
+  return array(
+    // Views handlers
+    'views_callback_handler_area' => 'plugins/views/views_callback_handler_area.inc',
+    'views_callback_handler_field' => 'plugins/views/views_callback_handler_field.inc',
+    'views_callback_handler_filter' => 'plugins/views/views_callback_handler_filter.inc',
+    'views_callback_handler_sort' => 'plugins/views/views_callback_handler_sort.inc',
+    // Views plugins
+    'views_callback_plugin_access' => 'plugins/views/views_callback_plugin_access.inc',
+    'views_callback_plugin_cache' => 'plugins/views/views_callback_plugin_cache.inc',
+    'views_callback_plugin_pager' => 'plugins/views/views_callback_plugin_pager.inc',
+    'views_callback_plugin_query' => 'plugins/views/views_callback_plugin_query.inc',
+    'views_callback_plugin_wrapper' => 'plugins/views/views_callback_plugin_wrapper.inc',
+  );
+}
+
+/**
+ * Implements hook_views_api().
+ */
+function views_callback_views_api() {
+  return array(
+    'api' => 3,
+  );
+}
+
+/**
+ * Menu access callback function; use a custom callback to determine whether a user has
+ * access.
+ */
+function views_callback_check_access($callback_access, $view_name, $display_id, $account = NULL) {
+  global $user;
+  static $function = array();
+
+  if (!isset($account)) {
+    $account = $user;
+  }
+
+  if (!isset($function[$view_name . ':' . $display_id])) {
+    $function[$view_name . ':' . $display_id] = $callback_access($view_name, $display_id, $account);
+  }
+
+  ob_start();
+  $access = (bool) $function[$view_name . ':' . $display_id]($view_name, $display_id, $account);
+  echo $access;
+  ob_end_clean();
+  return $access;
+}
+
+/**
+ * Helper function; builds form for a custom callback options of views handlers/plugins.
+ */
+function views_callback_form_element($handler, $checkbox, $input, $variables = array(), $callback_default = '') {
+  static $default_variables;
+  if (!isset($default_variables)) {
+    $default_variables = array(
+      '$view'    => t('The view object.'),
+      '$handler' => t('The handler object.'),
+      '$plugin'  => t('The plugin object.'),
+      '&$static'  => t('A variable that can be used to store reusable data per row. Passed by reference.'),
+      '$static'  => t('A variable that can be used to store reusable data per row.'),
+      '$row'     => t('Contains the retrieved record from the database (e.g. $data->nid).'),
+      '$data'    => t('Contains the retrieved record from the database (e.g. $data->nid).'),
+      '$results' => t('Array containing the view\'s result.'),
+      '$cache'   => t('The cache object.'),
+    );
+  }
+
+  list($name, $title, $description, $use_delimiters) = $input;
+  $container = array(
+    '#type' => 'container',
+    // @todo #tree => FALSE doesn't work here.
+    '#parents' => array('options'),
+  );
+
+  if (!empty($checkbox)) {
+    list($checkbox_name, $checkbox_title, $checkbox_description) = $checkbox;
+    $checkbox = array(
+      '#type' => 'checkbox',
+      '#title' => $checkbox_title,
+      '#description' => $checkbox_description,
+      '#default_value' => $handler->options[$checkbox_name] && !empty($handler->options[$name]),
+    );
+    $container['#states'] = array(
+      'invisible' => array(
+        'input[name="options[use_' . $name . ']"]' => array('checked' => FALSE),
+      ),
+    );
+  }
+
+  $items = array();
+  $parameters = array();
+  foreach ($variables as $variable_name => $variable_description) {
+    if (is_int($variable_name)) {
+      $variable_name = $variable_description;
+      $variable_description = isset($default_variables[$variable_description]) ? $default_variables[$variable_description] : '';
+    }
+    $items[] = $variable_name . ': ' . $variable_description;
+    $parameters[] = $variable_name;
+
+    if (strpos($variable_name, '$row') === 0) {
+      foreach ($handler->view->display_handler->get_handlers('field') as $field => $field_handler) {
+        $items[] = $variable_name . '->' . $field . ': ' . $field_handler->ui_name();
+      }
+    }
+  }
+
+  $callback_name = !empty($handler->options[$name]) ? $handler->options[$name] : $callback_default;
+
+  $container[$name] = array(
+    '#type' => 'textfield',
+    '#title' => $title,
+    '#default_value' => $callback_name,
+    '#description' => '<p>' . $description . '</p><p>' . t('Function to use in a custom module: <code>function ' . $callback_name . '(' . implode(', ', $parameters) . ') {}</code>' . '</p>', array(
+      '@callback_name' => $callback_name,
+      '@parameters' => implode(', ', $parameters),
+    )),
+  );
+
+  $container[$name . '_variables'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Available variables'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+  );
+  $container[$name . '_variables']['variables'] = array(
+    '#theme' => 'item_list',
+    '#items' => $items,
+  );
+
+  if (!empty($checkbox)) {
+    return array($checkbox_name => $checkbox, $name => $container);
+  }
+  return array($name => $container);
+}
+
+/**
+ * Implements hook_views_pre_execute().
+ */
+function views_callback_views_pre_execute($view) {
+  // Seize control over the query plugin if requested by a views handler.
+  if (!empty($view->views_callback)) {
+    $query = new views_callback_plugin_query();
+    $query->callback_wrap($view->query);
+  }
+}
+
+/**
+ * Implements hook_views_post_execute().
+ */
+function views_callback_views_post_execute($view) {
+  // Restore original query plugin if it was wrapped.
+  if ($view->query instanceof views_callback_plugin_wrapper) {
+    $view->query->callback_unwrap();
+  }
+}
+
+/**
+ * Implements hook_views_post_build().
+ */
+function views_callback_views_post_build($view) {
+  // Clear the limit and offset.
+  if (!empty($view->views_callback) && !empty($view->views_callback_query_all) && !empty($view->build_info['query']) && is_object($view->build_info['query'])) {
+    $view->build_info['query']->range();
+  }
+}

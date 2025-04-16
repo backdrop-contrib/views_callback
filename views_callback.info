@@ -1,0 +1,6 @@
+name = Views Callback
+description = Allows the usage of custom callbacks to adjust a view.
+package = Views
+backdrop = 1.x
+type = module
+dependencies[] = views
