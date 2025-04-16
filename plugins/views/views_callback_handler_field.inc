@@ -12,7 +12,7 @@ class views_callback_handler_field extends views_handler_field {
   const CLICK_SORT_ALPHA_CASE = 3;
   const CLICK_SORT_NAT = 4;
   const CLICK_SORT_NAT_CASE = 5;
-  const CLICK_SORT_PHP = 6;
+  const CLICK_SORT_CALLBACK = 6;
 
   protected $callback_static_variable = NULL;
 
@@ -68,12 +68,12 @@ class views_callback_handler_field extends views_handler_field {
       self::CLICK_SORT_ALPHA_CASE => t('Sort alphabetically (case insensitive)'),
       self::CLICK_SORT_NAT => t('Sort using a "natural order" algorithm'),
       self::CLICK_SORT_NAT_CASE => t('Sort using a "natural order" algorithm (case insensitive)'),
-      self::CLICK_SORT_PHP => t('Sort using custom a custom callback'),
+      self::CLICK_SORT_CALLBACK => t('Sort using custom a custom callback'),
     );
     $form['use_callback_click_sortable']['#default_value'] = $this->options['use_callback_click_sortable'];
     $form['callback_click_sortable']['#states'] = array(
       'visible' => array(
-        ':input[name="options[use_callback_click_sortable]"]' => array('value' => (string) self::CLICK_SORT_PHP),
+        ':input[name="options[use_callback_click_sortable]"]' => array('value' => (string) self::CLICK_SORT_CALLBACK),
       ),
     );
     $form += views_callback_form_element($this,
@@ -152,7 +152,7 @@ class views_callback_handler_field extends views_handler_field {
 
     // If we're sorting, do the actual sorting then fix the results as per the pager info.
     if (!empty($this->options['use_callback_click_sortable']) && !empty($this->callback_click_sort_order)) {
-      if ($this->options['use_callback_click_sortable'] == self::CLICK_SORT_PHP) {
+      if ($this->options['use_callback_click_sortable'] == self::CLICK_SORT_CALLBACK) {
         if (!empty($this->options['callback_click_sortable'])) {
           $this->callback_click_sort_function = TRUE;
         }
@@ -184,7 +184,7 @@ class views_callback_handler_field extends views_handler_field {
       $function = $this->options['callback_click_sortable'];
     }
 
-    if ($this->options['use_callback_click_sortable'] == self::CLICK_SORT_PHP) {
+    if ($this->options['use_callback_click_sortable'] == self::CLICK_SORT_CALLBACK) {
       foreach (array('row1' => 'normalized_row1', 'row2' => 'normalized_row2') as $name => $normalized_name) {
         $$normalized_name = new stdClass();
         foreach ($this->view->display_handler->get_handlers('field') as $field => $handler) {
