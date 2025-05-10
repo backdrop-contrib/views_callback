@@ -137,7 +137,7 @@ class views_callback_handler_field extends views_handler_field {
    */
   public function callback_post_execute() {
     // Execute value custom callback.
-    if (!empty($this->options['use_callback_setup']) && !empty($this->options['callback_value'])) {
+    if (!empty($this->options['use_callback_value']) && !empty($this->options['callback_value'])) {
       $function = $this->options['callback_value'];
       ob_start();
       foreach ($this->view->result as $i => &$row) {
