@@ -19,6 +19,8 @@ executable PHP code in the configuration.
 - Install this module using the [official Backdrop CMS instructions](https://backdropcms.org/guide/modules).
 - Add a *Custom callback* field, area, filter, sort, access, or cache.
 - Copy the displayed callback signature to a custom module.
+- If changing the callback name, you may need to flush caches so that it will
+  recognize the new function.
 
 ## Available handlers
 
