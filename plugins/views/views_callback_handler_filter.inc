@@ -50,7 +50,7 @@ class views_callback_handler_filter extends views_handler_filter {
     );
     $form += views_callback_form_element($this,
       FALSE,
-      array('callback_filter', t('Filter callback'), t('If the callback function returns TRUE the current row is removed from the results; FALSE otherwise.'), FALSE),
+      array('callback_filter', t('Filter callback'), t('If the callback function returns TRUE the current row is <em>filtered out</em>, that is, removed from, the results. Return FALSE to <em>keep</em> the current row.'), FALSE),
       array('$view', '$handler', '$static', '$row', '$data'),
       $callback_name . 'filter',
     );
