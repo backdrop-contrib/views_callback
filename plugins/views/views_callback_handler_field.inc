@@ -23,6 +23,7 @@ class views_callback_handler_field extends views_handler_field {
     $options = parent::option_definition();
     $options['use_callback_setup'] = array('default' => FALSE);
     $options['callback_setup'] = array('default' => '');
+    $options['use_callback_value'] = array('default' => FALSE);
     $options['callback_value'] = array('default' => '');
     $options['callback_output'] = array('default' => '');
     $options['use_callback_click_sortable'] = array('default' => self::CLICK_SORT_DISABLED);
@@ -45,7 +46,7 @@ class views_callback_handler_field extends views_handler_field {
       $callback_name . 'setup',
     );
     $form += views_callback_form_element($this,
-      FALSE,
+      array('use_callback_value', t('Use value callback'), t('If checked, you can provide a callback function to construct the value of this field.')),
       array('callback_value', t('Value callback'), t('Callback function to construct the value of this field. Store data in static variable.'), FALSE),
       array('$view', '$handler', '&$static', '$row', '$data'),
       $callback_name . 'value',
@@ -136,7 +137,7 @@ class views_callback_handler_field extends views_handler_field {
    */
   public function callback_post_execute() {
     // Execute value custom callback.
-    if (!empty($this->options['callback_value'])) {
+    if (!empty($this->options['use_callback_setup']) && !empty($this->options['callback_value'])) {
       $function = $this->options['callback_value'];
       ob_start();
       foreach ($this->view->result as $i => &$row) {
