@@ -55,7 +55,7 @@ class views_callback_plugin_access extends views_plugin_access {
    * Implements views_plugin_access#access().
    */
   public function access($account) {
-    if (!empty($this->options['callback_access'])) {
+    if (!empty($this->options['callback_access']) && function_exists($this->options['callback_access'])) {
       return views_callback_check_access($this->options['callback_access'], $this->view->name, $this->display->id, $account);
     }
     return TRUE;
@@ -65,8 +65,14 @@ class views_callback_plugin_access extends views_plugin_access {
    * Implements views_plugin_access#get_access_callback().
    */
   public function get_access_callback() {
-    if (!empty($this->options['callback_access'])) {
+    if (!empty($this->options['callback_access']) && function_exists($this->options['callback_access'])) {
       return array('views_callback_check_access', array($this->options['callback_access'], $this->view->name, $this->display->id));
+    }
+    else {
+      watchdog('views_callback', 'View: %view is calling undefined Access Value function %callback.', array(
+        '%callback' => $this->options['callback_access'],
+        '%view' => $this->view->name,
+      ), WATCHDOG_CRITICAL);
     }
     return TRUE;
   }

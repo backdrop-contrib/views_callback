@@ -39,9 +39,17 @@ class views_callback_handler_area extends views_handler_area {
     // Execute output a custom callback.
     if ((!$empty || !empty($this->options['empty'])) && !empty($this->options['callback_output'])) {
       $function = $this->options['callback_output'];
-      ob_start();
-      echo $function($this->view, $this, $this->view->result);
-      return ob_get_clean();
+      if (function_exists($function)) {
+        ob_start();
+        echo $function($this->view, $this, $this->view->result);
+        return ob_get_clean();
+      }
+      else {
+        watchdog('views_callback', 'View: %view is calling undefined Area Output function %callback.', array(
+          '%callback' => $function,
+          '%view' => $this->view->name,
+        ), WATCHDOG_CRITICAL);
+      }
     }
     return '';
   }

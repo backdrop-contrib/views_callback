@@ -125,9 +125,17 @@ class views_callback_handler_field extends views_handler_field {
     // Execute static PHP code.
     if (!empty($this->options['use_callback_setup']) && !empty($this->options['callback_setup'])) {
       $function = $this->options['callback_setup'];
-      ob_start();
-      echo $function($this->view, $this, $this->callback_static_variable);
-      ob_end_clean();
+      if (function_exists($function)) {
+        ob_start();
+        $function($this->view, $this, $this->callback_static_variable);
+        ob_end_clean();
+      }
+      else {
+        watchdog('views_callback', 'View: %view is calling undefined Field Setup function %callback.', array(
+          '%callback' => $function,
+          '%view' => $this->view->name,
+        ), WATCHDOG_CRITICAL);
+      }
     }
   }
 
@@ -139,16 +147,24 @@ class views_callback_handler_field extends views_handler_field {
     // Execute value custom callback.
     if (!empty($this->options['use_callback_value']) && !empty($this->options['callback_value'])) {
       $function = $this->options['callback_value'];
-      ob_start();
-      foreach ($this->view->result as $i => &$row) {
-        $normalized_row = new stdClass();
-        foreach ($this->view->display_handler->get_handlers('field') as $field => $handler) {
-          $normalized_row->$field = isset($row->{$handler->field_alias}) ? $row->{$handler->field_alias} : NULL;
+      if (function_exists($function)) {
+        ob_start();
+        foreach ($this->view->result as $i => &$row) {
+          $normalized_row = new stdClass();
+          foreach ($this->view->display_handler->get_handlers('field') as $field => $handler) {
+            $normalized_row->$field = isset($row->{$handler->field_alias}) ? $row->{$handler->field_alias} : NULL;
+          }
+          // Store the result, passed by reference to $this->view->result.
+          $row->{$this->field_alias} = $function($this->view, $this, $this->callback_static_variable, $normalized_row, $row);
         }
-        // Store the result, passed by reference to $this->view->result.
-        $row->{$this->field_alias} = $function($this->view, $this, $this->callback_static_variable, $normalized_row, $row);
+        ob_end_clean();
       }
-      ob_end_clean();
+      else {
+        watchdog('views_callback', 'View: %view is calling undefined Field Value function %callback.', array(
+          '%callback' => $function,
+          '%view' => $this->view->name,
+        ), WATCHDOG_CRITICAL);
+      }
     }
 
     // If we're sorting, do the actual sorting then fix the results as per the pager info.
@@ -180,9 +196,17 @@ class views_callback_handler_field extends views_handler_field {
    */
   public function callback_click_sort($row1, $row2) {
     $factor = strtoupper($this->callback_click_sort_order) == 'ASC' ? 1 : -1;
+    $result = 0;
     $function = $this->callback_click_sort_function;
     if (is_bool($this->callback_click_sort_function)) {
       $function = $this->options['callback_click_sortable'];
+    }
+    if (!function_exists($function)) {
+      watchdog('views_callback', 'View: %view is calling undefined Field Sort function %callback.', array(
+        '%callback' => $function,
+        '%view' => $this->view->name,
+      ), WATCHDOG_CRITICAL);
+      return $factor * $result;
     }
 
     if ($this->options['use_callback_click_sortable'] == self::CLICK_SORT_CALLBACK) {
@@ -194,7 +218,6 @@ class views_callback_handler_field extends views_handler_field {
       }
       ob_start();
       $result = (int) $function($this->view, $this, $this->callback_static_variable, $normalized_row1, $normalized_row2);
-      echo $result;
       ob_end_clean();
     }
     else {
@@ -222,9 +245,17 @@ class views_callback_handler_field extends views_handler_field {
       }
 
       $function = $this->options['callback_output'];
-      ob_start();
-      echo $function($this->view, $this, $this->callback_static_variable, $normalized_row, $values, isset($values->{$this->field_alias}) ? $values->{$this->field_alias} : NULL);
-      $value = ob_get_clean();
+      if (function_exists($function)) {
+        ob_start();
+        echo $function($this->view, $this, $this->callback_static_variable, $normalized_row, $values, isset($values->{$this->field_alias}) ? $values->{$this->field_alias} : NULL);
+        $value = ob_get_clean();
+      }
+      else {
+        watchdog('views_callback', 'View: %view is calling undefined Field Output function %callback.', array(
+          '%callback' => $function,
+          '%view' => $this->view->name,
+          ), WATCHDOG_CRITICAL);
+      }
     }
     else {
       if (isset($values->{$this->field_alias})) {
