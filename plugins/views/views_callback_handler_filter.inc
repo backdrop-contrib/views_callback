@@ -73,9 +73,17 @@ class views_callback_handler_filter extends views_handler_filter {
     // Execute static PHP code.
     if (!empty($this->options['use_callback_setup']) && !empty($this->options['callback_setup'])) {
       $function = $this->options['callback_setup'];
-      ob_start();
-      echo $function($this->view, $this, $this->callback_static_variable);
-      ob_end_clean();
+      if (function_exists($function)) {
+        ob_start();
+        $function($this->view, $this, $this->callback_static_variable);
+        ob_end_clean();
+      }
+      else {
+        watchdog('views_callback', 'View: %view is calling undefined Filter Setup function %callback.', array(
+          '%callback' => $function,
+          '%view' => $this->view->name,
+        ), WATCHDOG_CRITICAL);
+      }
     }
   }
 
@@ -87,18 +95,25 @@ class views_callback_handler_filter extends views_handler_filter {
     // Evaluate the callback function.
     if (!empty($this->options['callback_filter'])) {
       $function = $this->options['callback_filter'];
-      ob_start();
-      foreach ($this->view->result as $i => $row) {
-        $normalized_row = new stdClass();
-        foreach ($this->view->display_handler->get_handlers('field') as $field => $handler) {
-          $normalized_row->$field = isset($row->{$handler->field_alias}) ? $row->{$handler->field_alias} : NULL;
+      if (function_exists($function)) {
+        ob_start();
+        foreach ($this->view->result as $i => $row) {
+          $normalized_row = new stdClass();
+          foreach ($this->view->display_handler->get_handlers('field') as $field => $handler) {
+            $normalized_row->$field = isset($row->{$handler->field_alias}) ? $row->{$handler->field_alias} : NULL;
+          }
+          if ($function($this->view, $this, $this->callback_static_variable, $normalized_row, $row)) {
+            unset($this->view->result[$i]);
+          }
         }
-        if ($result = $function($this->view, $this, $this->callback_static_variable, $normalized_row, $row)) {
-          echo $result;
-          unset($this->view->result[$i]);
-        }
+        ob_end_clean();
       }
-      ob_end_clean();
+      else {
+        watchdog('views_callback', 'View: %view is calling undefined Filter function %callback.', array(
+          '%callback' => $function,
+          '%view' => $this->view->name,
+        ), WATCHDOG_CRITICAL);
+      }
     }
   }
 

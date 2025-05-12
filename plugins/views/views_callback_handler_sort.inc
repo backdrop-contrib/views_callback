@@ -63,9 +63,17 @@ class views_callback_handler_sort extends views_handler_sort {
     // Execute static PHP code.
     if (!empty($this->options['use_callback_setup']) && !empty($this->options['callback_setup'])) {
       $function = $this->options['callback_setup'];
-      ob_start();
-      echo $function($this->view, $this, $this->callback_static_variable);
-      ob_end_clean();
+      if (function_exists($function)) {
+        ob_start();
+        $function($this->view, $this, $this->callback_static_variable);
+        ob_end_clean();
+      }
+      else {
+        watchdog('views_callback', 'View: %view is calling undefined Sort Setup function %callback.', array(
+          '%callback' => $function,
+          '%view' => $this->view->name,
+        ), WATCHDOG_CRITICAL);
+      }
     }
   }
 
@@ -86,16 +94,25 @@ class views_callback_handler_sort extends views_handler_sort {
    */
   public function callback_sort($row1, $row2) {
     $factor = strtoupper($this->options['order']) == 'ASC' ? 1 : -1;
+    $result = 0;
 
     $function = $this->options['callback_sort'];
-
-    foreach (array('row1' => 'normalized_row1', 'row2' => 'normalized_row2') as $name => $normalized_name) {
-      $$normalized_name = new stdClass();
-      foreach ($this->view->display_handler->get_handlers('field') as $field => $handler) {
-        $$normalized_name->$field = isset($$name->{$handler->field_alias}) ? $$name->{$handler->field_alias} : NULL;
+    if (function_exists($this->options['callback_sort'])) {
+      foreach (array('row1' => 'normalized_row1', 'row2' => 'normalized_row2') as $name => $normalized_name) {
+        $$normalized_name = new stdClass();
+        foreach ($this->view->display_handler->get_handlers('field') as $field => $handler) {
+          $$normalized_name->$field = isset($$name->{$handler->field_alias}) ? $$name->{$handler->field_alias} : NULL;
+        }
       }
+      $result = (int) $function($this->view, $this, $this->callback_static_variable, $normalized_row1, $normalized_row2);
     }
-    $result = (int) $function($this->view, $this, $this->callback_static_variable, $normalized_row1, $normalized_row2);
+    else {
+      watchdog('views_callback', 'View: %view is calling undefined Sort function %callback.', array(
+        '%callback' => $function,
+        '%view' => $this->view->name,
+      ), WATCHDOG_CRITICAL);
+    }
+
     return $factor * $result;
   }
 

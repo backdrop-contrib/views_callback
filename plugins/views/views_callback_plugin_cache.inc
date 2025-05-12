@@ -69,11 +69,17 @@ class views_callback_plugin_cache extends views_plugin_cache {
         $fresh = !empty($cache);
         if ($fresh && !empty($this->options['callback_cache_results'])) {
           $function = $this->options['callback_cache_results'];
-
-          ob_start();
-          $fresh = $function($this->view, $this, $cache);
-          echo $fresh;
-          ob_end_clean();
+          if (function_exists($function)) {
+            ob_start();
+            $fresh = $function($this->view, $this, $cache);
+            ob_end_clean();
+          }
+          else {
+            watchdog('views_callback', 'View: %view is calling undefined Cache Results function %callback.', array(
+              '%callback' => $function,
+              '%view' => $this->view->name,
+            ), WATCHDOG_CRITICAL);
+          }
         }
         // Values to set: $view->result, $view->total_rows, $view->execute_time,
         // $view->current_page.
@@ -95,10 +101,17 @@ class views_callback_plugin_cache extends views_plugin_cache {
         $fresh = !empty($cache);
         if ($fresh && !empty($this->options['callback_cache_output'])) {
           $function = $this->options['callback_cache_output'];
-
-          ob_start();
-          $fresh = $function($this->view, $this, $cache);
-          ob_end_clean();
+          if (function_exists($function)) {
+            ob_start();
+            $fresh = $function($this->view, $this, $cache);
+            ob_end_clean();
+          }
+          else {
+            watchdog('views_callback', 'View: %view is calling undefined Cache Output function %callback.', array(
+              '%callback' => $function,
+              '%view' => $this->view->name,
+            ), WATCHDOG_CRITICAL);
+          }
         }
         if ($fresh) {
           // @code
