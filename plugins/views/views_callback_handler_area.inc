@@ -26,7 +26,7 @@ class views_callback_handler_area extends views_handler_area {
 
     $form += views_callback_form_element($this,
       FALSE,
-      array('callback_output', t('Output callback'), t('Callback function to construct the output of this area. Return a string with HTML.'), TRUE),
+      array('callback_output', t('Output callback'), t('Callback function to render the output of this area. Return a string with optional HTML to be displayed.'), TRUE),
       array('$view', '$handler', '$results'),
       $callback_name,
     );

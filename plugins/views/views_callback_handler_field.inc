@@ -41,13 +41,13 @@ class views_callback_handler_field extends views_handler_field {
 
     $form += views_callback_form_element($this,
       array('use_callback_setup', t('Use setup callback'), t('If checked, you can provide a callback function to be run once right before execution of the view. This may be useful to define callback functions to be re-used in the value and/or output callback.')),
-      array('callback_setup', t('Setup callback'), t('Callback function to run right before execution of the view. Store data in static variable.'), FALSE),
+      array('callback_setup', t('Setup callback'), t('Callback function to run right before execution of the view. Store data in static variable to carry data from one row to another. The query has been fully built, but has not been executed.'), FALSE),
       array('$view', '$handler', '&$static'),
       $callback_name . 'setup',
     );
     $form += views_callback_form_element($this,
       array('use_callback_value', t('Use value callback'), t('If checked, you can provide a callback function to construct the value of this field.')),
-      array('callback_value', t('Value callback'), t('Callback function to construct the value of this field. Store data in static variable.'), FALSE),
+      array('callback_value', t('Value callback'), t('Callback function to construct the value of this field. The return from this callback will be passed to <code>$value</code> in the output function. Data can also be passed in to the <code>$static</code> variable to carry data from one row to another. This callback is called right after the query has been executed, but no rendering has happened yet.'), FALSE),
       array('$view', '$handler', '&$static', '$row', '$data'),
       $callback_name . 'value',
     );
@@ -79,7 +79,7 @@ class views_callback_handler_field extends views_handler_field {
     );
     $form += views_callback_form_element($this,
       FALSE,
-      array('callback_output', t('Output callback'), t('Callback function to construct the output of this field.'), TRUE),
+      array('callback_output', t('Output callback'), t('Callback function to render the output of this field. Return a string with optional HTML to be displayed.'), TRUE),
       array('$view', '$handler', '$static', '$row', '$data', '$value' => t('Value of this field.')),
       $callback_name . 'output',
     );
@@ -145,8 +145,8 @@ class views_callback_handler_field extends views_handler_field {
         foreach ($this->view->display_handler->get_handlers('field') as $field => $handler) {
           $normalized_row->$field = isset($row->{$handler->field_alias}) ? $row->{$handler->field_alias} : NULL;
         }
+        // Store the result, passed by reference to $this->view->result.
         $row->{$this->field_alias} = $function($this->view, $this, $this->callback_static_variable, $normalized_row, $row);
-        echo $row->{$this->field_alias};
       }
       ob_end_clean();
     }
